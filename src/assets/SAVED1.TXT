@@ -1,0 +1,160 @@
+// src/App.js
+import React, { useState } from 'react';
+import { Bar } from 'react-chartjs-2';
+import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
+
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+
+const App = () => {
+    const [message, setMessage] = useState('');
+    const [key, setKey] = useState([1, 2, 3, 5, 4]);
+    const [encryptedMessage, setEncryptedMessage] = useState('');
+    const [decryptedMessage, setDecryptedMessage] = useState('');
+    const [patternData, setPatternData] = useState([]);
+    const [plaintextMatrix, setPlaintextMatrix] = useState([]);
+    const [ciphertextMatrix, setCiphertextMatrix] = useState([]);
+
+    // Fungsi untuk mengacak kunci
+    const randomizeKey = () => {
+        let randomKey = [1, 2, 3, 4, 5];
+        randomKey = randomKey.sort(() => Math.random() - 0.5);
+        setKey(randomKey);
+    };
+
+    // Fungsi enkripsi transposisi kolom
+    const encrypt = () => {
+        const numCols = key.length;
+        let grid = Array.from({ length: Math.ceil(message.length / numCols) }, () => Array(numCols).fill(''));
+
+        // Mengisi matriks plaintext awal
+        for (let i = 0; i < message.length; i++) {
+            grid[Math.floor(i / numCols)][i % numCols] = message[i];
+        }
+        setPlaintextMatrix(grid); // Simpan matriks plaintext untuk ditampilkan
+
+        // Membangun pesan terenkripsi berdasarkan pola kunci
+        let encrypted = '';
+        let cipherGrid = Array.from({ length: grid.length }, () => Array(numCols).fill(''));
+        key.forEach((col, keyIndex) => {
+            grid.forEach((row, rowIndex) => {
+                if (row[col - 1]) {
+                    encrypted += row[col - 1];
+                    cipherGrid[rowIndex][keyIndex] = row[col - 1];
+                }
+            });
+        });
+
+        setEncryptedMessage(encrypted);
+        setCiphertextMatrix(cipherGrid); // Simpan matriks ciphertext untuk ditampilkan
+        setPatternData(grid); // Update pola grid
+    };
+
+    // Fungsi dekripsi transposisi kolom
+    const decrypt = () => {
+        const numCols = key.length;
+        const numRows = Math.ceil(encryptedMessage.length / numCols);
+        let grid = Array.from({ length: numRows }, () => Array(numCols).fill(''));
+        let pos = 0;
+
+        // Mengisi matriks dekripsi berdasarkan urutan kunci
+        const sortedKey = [...key].sort((a, b) => a - b);
+        sortedKey.forEach((originalCol) => {
+            const colIndex = key.indexOf(originalCol);
+            for (let row = 0; row < numRows; row++) {
+                if (pos < encryptedMessage.length) {
+                    grid[row][colIndex] = encryptedMessage[pos++];
+                }
+            }
+        });
+
+        let decrypted = grid.flat().join('').trim();
+        setDecryptedMessage(decrypted);
+    };
+
+
+    // Konfigurasi data untuk plot pola
+    const plotData = {
+        labels: Array.from({ length: key.length }, (_, i) => `Kolom ${key[i]}`), // Use backticks for template literals
+        datasets: patternData.map((row, index) => ({
+            label: `Baris ${index + 1}`, // Use backticks for template literals
+            data: row.map((char) => (char ? 1 : 0)),
+            backgroundColor: row.map((char) => (char ? 'rgba(75, 192, 192, 0.6)' : 'rgba(192, 75, 75, 0.3)')),
+            borderColor: 'rgba(75, 192, 192, 1)',
+            borderWidth: 1,
+        })),
+    };
+
+
+    // Fungsi untuk menampilkan matriks dengan nomor kolom
+    const displayMatrixWithColumnNumbers = (matrix, isCipher) => (
+        <div>
+            {/* Baris nomor kolom */}
+            <div style={{ display: 'flex', fontWeight: 'bold', marginBottom: '5px' }}>
+                {Array.from({ length: key.length }, (_, i) => (
+                    <div key={i} style={{ width: '20px', textAlign: 'center' }}>
+                        {isCipher ? key[i] : i + 1}
+                    </div>
+                ))}
+            </div>
+            {/* Matriks konten */}
+            {matrix.map((row, rowIndex) => (
+                <div key={rowIndex} style={{ display: 'flex' }}>
+                    {row.map((char, colIndex) => (
+                        <div
+                            key={colIndex}
+                            style={{
+                                width: '20px',
+                                height: '20px',
+                                border: '1px solid black',
+                                display: 'flex',
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                            }}
+                        >
+                            {char || '-'}
+                        </div>
+                    ))}
+                </div>
+            ))}
+        </div>
+    );
+
+    return (
+        <div style={{ padding: '20px' }}>
+            <h1>Enkripsi Transposisi Columnar</h1>
+            <textarea
+                rows="4"
+                placeholder="Masukkan pesan"
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+            />
+            <div style={{ margin: '10px 0' }}>
+                <button onClick={encrypt}>Enkripsi</button>
+                <button onClick={decrypt}>Dekripsi</button>
+                <button onClick={randomizeKey}>Randomize Key</button>
+            </div>
+            <p>Kunci saat ini: {key.join(', ')}</p>
+            <h3>Pesan Terenkripsi:</h3>
+            <p>{encryptedMessage}</p>
+            <h3>Pesan Terdekripsi:</h3>
+            <p>{decryptedMessage}</p>
+
+            <div style={{ width: '100%', maxWidth: '400px', height: '300px', marginTop: '20px' }}>
+                <h3>Pola Transposisi Kolom</h3>
+                <Bar data={plotData} options={{ responsive: true, maintainAspectRatio: false }} />
+            </div>
+
+            <div style={{ marginTop: '20px' }}>
+                <h3>Matriks Plaintext</h3>
+                {displayMatrixWithColumnNumbers(plaintextMatrix, false)}
+            </div>
+
+            <div style={{ marginTop: '20px' }}>
+                <h3>Matriks Ciphertext</h3>
+                {displayMatrixWithColumnNumbers(ciphertextMatrix, true)}
+            </div>
+        </div>
+    );
+};
+
+export default App;
