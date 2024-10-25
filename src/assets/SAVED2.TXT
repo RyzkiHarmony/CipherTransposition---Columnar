@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
-import { Bar } from 'react-chartjs-2';
-import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
+import React, { useState, useEffect } from 'react';
+import { Bar, Pie } from 'react-chartjs-2';
+import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement } from 'chart.js';
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement);
 
 const App = () => {
     const [message, setMessage] = useState('');
@@ -12,6 +12,36 @@ const App = () => {
     const [patternData, setPatternData] = useState([]);
     const [plaintextMatrix, setPlaintextMatrix] = useState([]);
     const [ciphertextMatrix, setCiphertextMatrix] = useState([]);
+    const [debug, setDebug] = useState({});
+    const [charStats, setCharStats] = useState({});
+
+    // Fungsi untuk menghitung statistik karakter
+    const calculateCharStats = (text) => {
+        if (!text) return {};
+
+        const stats = {};
+        const total = text.length;
+
+        // Hitung frekuensi setiap karakter
+        [...text].forEach(char => {
+            stats[char] = (stats[char] || 0) + 1;
+        });
+
+        // Konversi ke persentase dan urutkan
+        const percentages = {};
+        Object.entries(stats)
+            .sort((a, b) => b[1] - a[1])
+            .forEach(([char, count]) => {
+                percentages[char] = (count / total * 100).toFixed(1);
+            });
+
+        return percentages;
+    };
+
+    // Update statistik ketika pesan berubah
+    useEffect(() => {
+        setCharStats(calculateCharStats(message.replace(/\s/g, '')));
+    }, [message]);
 
     const randomizeKey = () => {
         let randomKey = [1, 2, 3, 4, 5];
@@ -19,47 +49,35 @@ const App = () => {
         setKey(randomKey);
     };
 
-    // Helper function to create the transposition mapping
-    const createKeyMapping = (key) => {
+    const getColumnOrder = (key) => {
         return key
             .map((value, index) => ({ value, index }))
             .sort((a, b) => a.value - b.value)
-            .map((item, index) => ({ originalIndex: item.index, sortedIndex: index }));
+            .map(item => item.index);
     };
 
     const encrypt = () => {
         if (!message) return;
 
-        // Remove any whitespace from the message
         const cleanMessage = message.replace(/\s/g, '');
-
         const numCols = key.length;
         const numRows = Math.ceil(cleanMessage.length / numCols);
 
-        // Create the plaintext matrix and fill with empty strings
         let plaintextGrid = Array.from({ length: numRows }, () => Array(numCols).fill(''));
-
-        // Fill the grid row by row
         for (let i = 0; i < cleanMessage.length; i++) {
             const row = Math.floor(i / numCols);
             const col = i % numCols;
             plaintextGrid[row][col] = cleanMessage[i];
         }
 
-        setPlaintextMatrix(plaintextGrid);
-
-        // Create key mapping for column reordering
-        const keyMap = createKeyMapping(key);
-
-        // Initialize encrypted message and cipher grid
+        const columnOrder = getColumnOrder(key);
         let encrypted = '';
         let cipherGrid = Array.from({ length: numRows }, () => Array(numCols).fill(''));
 
-        // Read columns according to key order
         for (let i = 0; i < numCols; i++) {
-            const sourceCol = keyMap[i].originalIndex;
+            const currentCol = columnOrder[i];
             for (let row = 0; row < numRows; row++) {
-                const char = plaintextGrid[row][sourceCol];
+                const char = plaintextGrid[row][currentCol];
                 if (char) {
                     encrypted += char;
                     cipherGrid[row][i] = char;
@@ -67,7 +85,18 @@ const App = () => {
             }
         }
 
+        setDebug({
+            plaintext: cleanMessage,
+            columnOrder,
+            plaintextGrid,
+            cipherGrid,
+            encrypted,
+            numRows,
+            numCols
+        });
+
         setEncryptedMessage(encrypted);
+        setPlaintextMatrix(plaintextGrid);
         setCiphertextMatrix(cipherGrid);
         setPatternData(plaintextGrid);
     };
@@ -76,46 +105,45 @@ const App = () => {
         if (!encryptedMessage) return;
 
         const numCols = key.length;
-        const messageLength = encryptedMessage.length;
-        const numRows = Math.ceil(messageLength / numCols);
+        const numRows = Math.ceil(encryptedMessage.length / numCols);
+        const columnOrder = getColumnOrder(key);
 
-        // Create key mapping for reverse column ordering
-        const keyMap = createKeyMapping(key);
+        let decryptGrid = Array.from({ length: numRows }, () => Array(numCols).fill(''));
 
-        // Calculate the lengths of each column
-        const colLengths = Array(numCols).fill(Math.floor(messageLength / numCols));
-        const remainder = messageLength % numCols;
-        for (let i = 0; i < remainder; i++) {
-            colLengths[keyMap[i].originalIndex]++;
-        }
+        const fullRows = Math.floor(encryptedMessage.length / numCols);
+        const remainingChars = encryptedMessage.length % numCols;
 
-        // Create and fill the grid for decryption
-        let grid = Array.from({ length: numRows }, () => Array(numCols).fill(''));
         let pos = 0;
-
-        // Fill the grid column by column based on the key mapping
         for (let i = 0; i < numCols; i++) {
-            const targetCol = keyMap[i].originalIndex;
-            const colLength = colLengths[targetCol];
+            const colLength = fullRows + (columnOrder[i] < remainingChars ? 1 : 0);
+            const targetCol = columnOrder[i];
 
-            for (let row = 0; row < colLength && pos < messageLength; row++) {
-                grid[row][targetCol] = encryptedMessage[pos++];
-            }
-        }
-
-        // Read the grid row by row to get the decrypted message
-        let decrypted = '';
-        for (let row = 0; row < numRows; row++) {
-            for (let col = 0; col < numCols; col++) {
-                if (grid[row][col]) {
-                    decrypted += grid[row][col];
+            for (let row = 0; row < colLength; row++) {
+                if (pos < encryptedMessage.length) {
+                    decryptGrid[row][targetCol] = encryptedMessage[pos++];
                 }
             }
         }
 
+        let decrypted = '';
+        for (let row = 0; row < numRows; row++) {
+            for (let col = 0; col < numCols; col++) {
+                if (decryptGrid[row][col]) {
+                    decrypted += decryptGrid[row][col];
+                }
+            }
+        }
+
+        setDebug(prev => ({
+            ...prev,
+            decryptionGrid: decryptGrid,
+            decrypted
+        }));
+
         setDecryptedMessage(decrypted);
     };
 
+    // Data untuk plot transposisi
     const plotData = {
         labels: Array.from({ length: key.length }, (_, i) => `Kolom ${key[i]}`),
         datasets: patternData.map((row, index) => ({
@@ -125,6 +153,40 @@ const App = () => {
             borderColor: 'rgba(75, 192, 192, 1)',
             borderWidth: 1,
         })),
+    };
+
+    // Data untuk plot statistik karakter
+    const charStatsData = {
+        labels: Object.keys(charStats),
+        datasets: [{
+            data: Object.values(charStats),
+            backgroundColor: Object.keys(charStats).map((_, index) =>
+                `hsl(${(index * 360) / Object.keys(charStats).length}, 70%, 60%)`
+            ),
+            borderWidth: 1,
+        }],
+    };
+
+    const charStatsOptions = {
+        plugins: {
+            legend: {
+                position: 'right',
+                labels: {
+                    generateLabels: (chart) => {
+                        const data = chart.data;
+                        return data.labels.map((label, index) => ({
+                            text: `${label} (${data.datasets[0].data[index]}%)`,
+                            fillStyle: data.datasets[0].backgroundColor[index],
+                            index
+                        }));
+                    }
+                }
+            },
+            title: {
+                display: true,
+                text: 'Distribusi Karakter (%)'
+            }
+        }
     };
 
     const displayMatrixWithColumnNumbers = (matrix, isCipher) => (
@@ -192,6 +254,36 @@ const App = () => {
                 </button>
             </div>
             <p>Kunci saat ini: {key.join(', ')}</p>
+
+            {/* Tambahan visualisasi statistik karakter */}
+            <div style={{
+                marginTop: '20px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center'
+            }}>
+                <h3>Statistik Karakter Input</h3>
+                <div style={{ width: '100%', maxWidth: '600px', height: '300px' }}>
+                    {Object.keys(charStats).length > 0 && (
+                        <Pie data={charStatsData} options={charStatsOptions} />
+                    )}
+                </div>
+                <div style={{ marginTop: '10px', textAlign: 'center' }}>
+                    <p>Total karakter: {message.replace(/\s/g, '').length}</p>
+                </div>
+            </div>
+
+            <div style={{ marginTop: '20px' }}>
+                <h3>Debug Info</h3>
+                <pre style={{
+                    backgroundColor: '#f5f5f5',
+                    padding: '10px',
+                    borderRadius: '4px',
+                    overflow: 'auto'
+                }}>
+                    {JSON.stringify(debug, null, 2)}
+                </pre>
+            </div>
 
             <div style={{ marginTop: '20px' }}>
                 <h3>Pesan Terenkripsi:</h3>
