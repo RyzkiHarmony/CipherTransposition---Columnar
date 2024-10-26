@@ -12,8 +12,26 @@ const App = () => {
     const [patternData, setPatternData] = useState([]);
     const [plaintextMatrix, setPlaintextMatrix] = useState([]);
     const [ciphertextMatrix, setCiphertextMatrix] = useState([]);
-    const [debug, setDebug] = useState({});
     const [charStats, setCharStats] = useState({});
+    const [allPossibleDecryptions, setAllPossibleDecryptions] = useState([]);
+
+    // Function to generate all possible permutations
+    const generatePermutations = (arr) => {
+        if (arr.length <= 1) return [arr];
+        const result = [];
+
+        for (let i = 0; i < arr.length; i++) {
+            const current = arr[i];
+            const remaining = [...arr.slice(0, i), ...arr.slice(i + 1)];
+            const permutations = generatePermutations(remaining);
+
+            for (let perm of permutations) {
+                result.push([current, ...perm]);
+            }
+        }
+
+        return result;
+    };
 
     // Fungsi untuk menghitung statistik karakter
     const calculateCharStats = (text) => {
@@ -85,28 +103,18 @@ const App = () => {
             }
         }
 
-        setDebug({
-            plaintext: cleanMessage,
-            columnOrder,
-            plaintextGrid,
-            cipherGrid,
-            encrypted,
-            numRows,
-            numCols
-        });
-
         setEncryptedMessage(encrypted);
         setPlaintextMatrix(plaintextGrid);
         setCiphertextMatrix(cipherGrid);
         setPatternData(plaintextGrid);
     };
 
-    const decrypt = () => {
-        if (!encryptedMessage) return;
+    const decrypt = (customKey = key) => {
+        if (!encryptedMessage) return '';
 
-        const numCols = key.length;
+        const numCols = customKey.length;
         const numRows = Math.ceil(encryptedMessage.length / numCols);
-        const columnOrder = getColumnOrder(key);
+        const columnOrder = getColumnOrder(customKey);
 
         let decryptGrid = Array.from({ length: numRows }, () => Array(numCols).fill(''));
 
@@ -134,13 +142,32 @@ const App = () => {
             }
         }
 
-        setDebug(prev => ({
-            ...prev,
-            decryptionGrid: decryptGrid,
-            decrypted
+        return decrypted;
+    };
+
+    const handleDecrypt = () => {
+        const result = decrypt();
+        setDecryptedMessage(result);
+    };
+
+    const analyzeAllPatterns = () => {
+        // Generate all possible permutations of the key
+        const baseKey = Array.from({ length: key.length }, (_, i) => i + 1);
+        const allPermutations = generatePermutations(baseKey);
+
+        // Try decryption with each permutation
+        const results = allPermutations.map(permutation => ({
+            key: permutation,
+            decrypted: decrypt(permutation)
         }));
 
-        setDecryptedMessage(decrypted);
+        // Sort results by how likely they are to be correct (you can modify this heuristic)
+        const sortedResults = results.sort((a, b) => {
+            // Simple heuristic: longer words might be more likely to be correct
+            return b.decrypted.length - a.decrypted.length;
+        });
+
+        setAllPossibleDecryptions(sortedResults);
     };
 
     // Data untuk plot transposisi
@@ -233,29 +260,58 @@ const App = () => {
                     onChange={(e) => setMessage(e.target.value)}
                 />
             </div>
-            <div style={{ margin: '10px 0' }}>
+            <div style={{margin: '10px 0'}}>
                 <button
                     onClick={encrypt}
-                    style={{ marginRight: '10px', padding: '8px 16px' }}
+                    style={{marginRight: '10px', padding: '8px 16px'}}
                 >
                     Enkripsi
                 </button>
                 <button
-                    onClick={decrypt}
-                    style={{ marginRight: '10px', padding: '8px 16px' }}
+                    onClick={handleDecrypt}
+                    style={{marginRight: '10px', padding: '8px 16px'}}
                 >
                     Dekripsi
                 </button>
                 <button
                     onClick={randomizeKey}
-                    style={{ padding: '8px 16px' }}
+                    style={{marginRight: '10px', padding: '8px 16px'}}
                 >
                     Randomize Key
+                </button>
+                <button
+                    onClick={analyzeAllPatterns}
+                    style={{padding: '8px 16px'}}
+                >
+                    Analisis Semua Pola
                 </button>
             </div>
             <p>Kunci saat ini: {key.join(', ')}</p>
 
-            {/* Tambahan visualisasi statistik karakter */}
+            {/* Hasil Analisis Pola */}
+            {allPossibleDecryptions.length > 0 && (
+                <div style={{ marginTop: '20px' }}>
+                    <h3>Hasil Analisis Semua Pola:</h3>
+                    <div style={{ maxHeight: '300px', overflowY: 'auto', border: '1px solid #ccc', padding: '10px' }}>
+                        {allPossibleDecryptions.map((result, index) => (
+                            <div key={index} style={{
+                                marginBottom: '10px',
+                                padding: '8px',
+                                backgroundColor: index === 0 ? '#e6f3ff' : 'transparent',
+                                border: '1px solid #ddd',
+                                borderRadius: '4px'
+                            }}>
+                                <strong>Kunci: [{result.key.join(', ')}]</strong>
+                                <div style={{ marginTop: '5px', wordBreak: 'break-all' }}>
+                                    {result.decrypted}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Statistik Karakter Input */}
             <div style={{
                 marginTop: '20px',
                 display: 'flex',
@@ -271,18 +327,6 @@ const App = () => {
                 <div style={{ marginTop: '10px', textAlign: 'center' }}>
                     <p>Total karakter: {message.replace(/\s/g, '').length}</p>
                 </div>
-            </div>
-
-            <div style={{ marginTop: '20px' }}>
-                <h3>Debug Info</h3>
-                <pre style={{
-                    backgroundColor: '#f5f5f5',
-                    padding: '10px',
-                    borderRadius: '4px',
-                    overflow: 'auto'
-                }}>
-                    {JSON.stringify(debug, null, 2)}
-                </pre>
             </div>
 
             <div style={{ marginTop: '20px' }}>

@@ -12,7 +12,6 @@ const App = () => {
     const [patternData, setPatternData] = useState([]);
     const [plaintextMatrix, setPlaintextMatrix] = useState([]);
     const [ciphertextMatrix, setCiphertextMatrix] = useState([]);
-    const [debug, setDebug] = useState({});
     const [charStats, setCharStats] = useState({});
 
     // Fungsi untuk menghitung statistik karakter
@@ -85,16 +84,6 @@ const App = () => {
             }
         }
 
-        setDebug({
-            plaintext: cleanMessage,
-            columnOrder,
-            plaintextGrid,
-            cipherGrid,
-            encrypted,
-            numRows,
-            numCols
-        });
-
         setEncryptedMessage(encrypted);
         setPlaintextMatrix(plaintextGrid);
         setCiphertextMatrix(cipherGrid);
@@ -133,12 +122,6 @@ const App = () => {
                 }
             }
         }
-
-        setDebug(prev => ({
-            ...prev,
-            decryptionGrid: decryptGrid,
-            decrypted
-        }));
 
         setDecryptedMessage(decrypted);
     };
@@ -273,17 +256,6 @@ const App = () => {
                 </div>
             </div>
 
-            <div style={{ marginTop: '20px' }}>
-                <h3>Debug Info</h3>
-                <pre style={{
-                    backgroundColor: '#f5f5f5',
-                    padding: '10px',
-                    borderRadius: '4px',
-                    overflow: 'auto'
-                }}>
-                    {JSON.stringify(debug, null, 2)}
-                </pre>
-            </div>
 
             <div style={{ marginTop: '20px' }}>
                 <h3>Pesan Terenkripsi:</h3>
