@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Bar, Pie } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement } from 'chart.js';
+import './App.css';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement);
 
@@ -14,8 +15,111 @@ const App = () => {
     const [ciphertextMatrix, setCiphertextMatrix] = useState([]);
     const [charStats, setCharStats] = useState({});
     const [allPossibleDecryptions, setAllPossibleDecryptions] = useState([]);
+    const [showMatrices, setShowMatrices] = useState(false);
+    const [showStat, setShowStat] = useState(false);
+    const [showColumnPattern, setShowColumnPattern] = useState(false);
 
-    // Function to generate all possible permutations
+    useEffect(() => {
+        setCharStats(calculateCharStats(message.replace(/\s/g, '')));
+    }, [message]);
+
+    const getColumnOrder = (key) => {
+        return key
+            .map((value, index) => ({ value, index }))
+            .sort((a, b) => a.value - b.value)
+            .map(item => item.index);
+    };
+
+    const encrypt = () => {
+        if (!message) return;
+    
+        const cleanMessage = message.replace(/\s/g, '');
+        const numCols = key.length;
+        const numRows = Math.ceil(cleanMessage.length / numCols);
+    
+        let plaintextGrid = Array.from({ length: numRows }, () => Array(numCols).fill(''));
+        for (let i = 0; i < cleanMessage.length; i++) {
+            const row = Math.floor(i / numCols);
+            const col = i % numCols;
+            plaintextGrid[row][col] = cleanMessage[i];
+        }
+    
+        const columnOrder = getColumnOrder(key);
+        let encrypted = '';
+        let cipherGrid = Array.from({ length: numRows }, () => Array(numCols).fill(''));
+    
+        for (let i = 0; i < numCols; i++) {
+            const currentCol = columnOrder[i];
+            for (let row = 0; row < numRows; row++) {
+                const char = plaintextGrid[row][currentCol];
+                if (char) {
+                    encrypted += char;
+                    cipherGrid[row][i] = char;
+                }
+            }
+        }
+    
+        setEncryptedMessage(encrypted);
+        setPlaintextMatrix(plaintextGrid);
+        setCiphertextMatrix(cipherGrid);
+        setPatternData(plaintextGrid);
+    };
+
+    const decrypt = (customKey = key) => {
+        if (!encryptedMessage) return '';
+    
+        const numCols = customKey.length;
+        const numRows = Math.ceil(encryptedMessage.length / numCols);
+        const columnOrder = getColumnOrder(customKey);
+    
+        let decryptGrid = Array.from({ length: numRows }, () => Array(numCols).fill(''));
+        const fullRows = Math.floor(encryptedMessage.length / numCols);
+        const remainingChars = encryptedMessage.length % numCols;   
+    
+        let pos = 0;
+        for (let i = 0; i < numCols; i++) {
+            const colLength = fullRows + (columnOrder[i] < remainingChars ? 1 : 0);
+            const targetCol = columnOrder[i];
+    
+            for (let row = 0; row < colLength; row++) {
+                if (pos < encryptedMessage.length) {
+                    decryptGrid[row][targetCol] = encryptedMessage[pos++];
+                }
+            }
+        }
+    
+        let decrypted = '';
+        for (let row = 0; row < numRows; row++) {
+            for (let col = 0; col < numCols; col++) {
+                if (decryptGrid[row][col]) {
+                    decrypted += decryptGrid[row][col];
+                }
+            }
+        }
+    
+        return decrypted;
+    };
+
+    const calculateCharStats = (text) => {
+        if (!text) return {};
+
+        const stats = {};
+        const total = text.length;
+
+        [...text].forEach(char => {
+            stats[char] = (stats[char] || 0) + 1;
+        });
+
+        const percentages = {};
+        Object.entries(stats)
+            .sort((a, b) => b[1] - a[1])
+            .forEach(([char, count]) => {
+                percentages[char] = (count / total * 100).toFixed(1);
+            });
+
+        return percentages;
+    };
+
     const generatePermutations = (arr) => {
         if (arr.length <= 1) return [arr];
         const result = [];
@@ -33,116 +137,16 @@ const App = () => {
         return result;
     };
 
-    // Fungsi untuk menghitung statistik karakter
-    const calculateCharStats = (text) => {
-        if (!text) return {};
-
-        const stats = {};
-        const total = text.length;
-
-        // Hitung frekuensi setiap karakter
-        [...text].forEach(char => {
-            stats[char] = (stats[char] || 0) + 1;
-        });
-
-        // Konversi ke persentase dan urutkan
-        const percentages = {};
-        Object.entries(stats)
-            .sort((a, b) => b[1] - a[1])
-            .forEach(([char, count]) => {
-                percentages[char] = (count / total * 100).toFixed(1);
-            });
-
-        return percentages;
-    };
-
-    // Update statistik ketika pesan berubah
-    useEffect(() => {
-        setCharStats(calculateCharStats(message.replace(/\s/g, '')));
-    }, [message]);
-
     const randomizeKey = () => {
-        let randomKey = [1, 2, 3, 4, 5];
-        randomKey = randomKey.sort(() => Math.random() - 0.5);
-        setKey(randomKey);
-    };
-
-    const getColumnOrder = (key) => {
-        return key
-            .map((value, index) => ({ value, index }))
-            .sort((a, b) => a.value - b.value)
-            .map(item => item.index);
-    };
-
-    const encrypt = () => {
-        if (!message) return;
-
-        const cleanMessage = message.replace(/\s/g, '');
-        const numCols = key.length;
-        const numRows = Math.ceil(cleanMessage.length / numCols);
-
-        let plaintextGrid = Array.from({ length: numRows }, () => Array(numCols).fill(''));
-        for (let i = 0; i < cleanMessage.length; i++) {
-            const row = Math.floor(i / numCols);
-            const col = i % numCols;
-            plaintextGrid[row][col] = cleanMessage[i];
+        let numbers = [1, 2, 3, 4, 5];
+        let randomized = [];
+        while (numbers.length > 0) {
+            const randomIndex = Math.floor(Math.random() * numbers.length);
+            randomized.push(numbers[randomIndex]);
+            numbers.splice(randomIndex, 1);
         }
-
-        const columnOrder = getColumnOrder(key);
-        let encrypted = '';
-        let cipherGrid = Array.from({ length: numRows }, () => Array(numCols).fill(''));
-
-        for (let i = 0; i < numCols; i++) {
-            const currentCol = columnOrder[i];
-            for (let row = 0; row < numRows; row++) {
-                const char = plaintextGrid[row][currentCol];
-                if (char) {
-                    encrypted += char;
-                    cipherGrid[row][i] = char;
-                }
-            }
-        }
-
-        setEncryptedMessage(encrypted);
-        setPlaintextMatrix(plaintextGrid);
-        setCiphertextMatrix(cipherGrid);
-        setPatternData(plaintextGrid);
-    };
-
-    const decrypt = (customKey = key) => {
-        if (!encryptedMessage) return '';
-
-        const numCols = customKey.length;
-        const numRows = Math.ceil(encryptedMessage.length / numCols);
-        const columnOrder = getColumnOrder(customKey);
-
-        let decryptGrid = Array.from({ length: numRows }, () => Array(numCols).fill(''));
-
-        const fullRows = Math.floor(encryptedMessage.length / numCols);
-        const remainingChars = encryptedMessage.length % numCols;
-
-        let pos = 0;
-        for (let i = 0; i < numCols; i++) {
-            const colLength = fullRows + (columnOrder[i] < remainingChars ? 1 : 0);
-            const targetCol = columnOrder[i];
-
-            for (let row = 0; row < colLength; row++) {
-                if (pos < encryptedMessage.length) {
-                    decryptGrid[row][targetCol] = encryptedMessage[pos++];
-                }
-            }
-        }
-
-        let decrypted = '';
-        for (let row = 0; row < numRows; row++) {
-            for (let col = 0; col < numCols; col++) {
-                if (decryptGrid[row][col]) {
-                    decrypted += decryptGrid[row][col];
-                }
-            }
-        }
-
-        return decrypted;
+        setKey(randomized);
+        setCiphertextMatrix([]);
     };
 
     const handleDecrypt = () => {
@@ -151,26 +155,31 @@ const App = () => {
     };
 
     const analyzeAllPatterns = () => {
-        // Generate all possible permutations of the key
         const baseKey = Array.from({ length: key.length }, (_, i) => i + 1);
         const allPermutations = generatePermutations(baseKey);
-
-        // Try decryption with each permutation
         const results = allPermutations.map(permutation => ({
             key: permutation,
             decrypted: decrypt(permutation)
         }));
-
-        // Sort results by how likely they are to be correct (you can modify this heuristic)
-        const sortedResults = results.sort((a, b) => {
-            // Simple heuristic: longer words might be more likely to be correct
-            return b.decrypted.length - a.decrypted.length;
-        });
-
+        const sortedResults = results.sort((a, b) => b.decrypted.length - a.decrypted.length);
         setAllPossibleDecryptions(sortedResults);
     };
 
-    // Data untuk plot transposisi
+    const displayMatrixWithColumnNumbers = (matrix, isCipher) => {
+        const columnOrder = getColumnOrder(isCipher ? key : key);
+        return (
+            <div>
+                <div style={{ display: 'flex', fontWeight: 'bold', marginBottom: '5px' }}>
+                    {Array.from({ length: key.length }, (_, i) => (
+                        <div key={i} style={{ width: '47px', textAlign: 'center' }}>
+                            {isCipher ? columnOrder[i] + 1 : i + 1}
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+    };
+
     const plotData = {
         labels: Array.from({ length: key.length }, (_, i) => `Kolom ${key[i]}`),
         datasets: patternData.map((row, index) => ({
@@ -182,7 +191,6 @@ const App = () => {
         })),
     };
 
-    // Data untuk plot statistik karakter
     const charStatsData = {
         labels: Object.keys(charStats),
         datasets: [{
@@ -195,179 +203,195 @@ const App = () => {
     };
 
     const charStatsOptions = {
+        responsive: true,
+        maintainAspectRatio: true,
         plugins: {
             legend: {
                 position: 'right',
                 labels: {
+                    boxWidth: 20,
+                    padding: 5,
+                    font: { size: 14 },
                     generateLabels: (chart) => {
                         const data = chart.data;
                         return data.labels.map((label, index) => ({
                             text: `${label} (${data.datasets[0].data[index]}%)`,
                             fillStyle: data.datasets[0].backgroundColor[index],
+                            fontColor: '#F0F0F0',
                             index
                         }));
                     }
-                }
+                },
             },
             title: {
                 display: true,
-                text: 'Distribusi Karakter (%)'
-            }
-        }
+                text: 'Distribusi Karakter (%)',
+                style: {
+                    fontSize: 45,
+                    marginBottom: 100,
+                    color: '#F0F0F0'
+                }
+            },
+        },
     };
 
-    const displayMatrixWithColumnNumbers = (matrix, isCipher) => (
-        <div>
-            <div style={{ display: 'flex', fontWeight: 'bold', marginBottom: '5px' }}>
-                {Array.from({ length: key.length }, (_, i) => (
-                    <div key={i} style={{ width: '30px', textAlign: 'center' }}>
-                        {isCipher ? key[i] : i + 1}
-                    </div>
-                ))}
-            </div>
-            {matrix.map((row, rowIndex) => (
-                <div key={rowIndex} style={{ display: 'flex' }}>
-                    {row.map((char, colIndex) => (
-                        <div
-                            key={colIndex}
-                            style={{
-                                width: '30px',
-                                height: '30px',
-                                border: '1px solid black',
-                                display: 'flex',
-                                justifyContent: 'center',
-                                alignItems: 'center',
-                                backgroundColor: char ? '#e6f3ff' : '#ffffff'
-                            }}
-                        >
-                            {char || '-'}
-                        </div>
-                    ))}
-                </div>
-            ))}
-        </div>
-    );
-
     return (
-        <div style={{ padding: '20px' }}>
-            <h1>Enkripsi Transposisi Columnar</h1>
-            <div style={{ marginBottom: '20px' }}>
-                <textarea
-                    rows="4"
-                    style={{ width: '100%', maxWidth: '400px', padding: '8px' }}
-                    placeholder="Masukkan pesan"
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                />
+        <div className="container">
+            <h1 className="header">Enkripsi Transposisi Columnar</h1>
+            
+            <textarea
+                className="textarea"
+                rows="4"
+                placeholder="Masukkan Plaintext"
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+            />
+            
+            <div className="result-box1">
+                Key: <br />
+                {key.join(' - ')}
             </div>
-            <div style={{margin: '10px 0'}}>
-                <button
-                    onClick={encrypt}
-                    style={{marginRight: '10px', padding: '8px 16px'}}
-                >
-                    Enkripsi
-                </button>
-                <button
-                    onClick={handleDecrypt}
-                    style={{marginRight: '10px', padding: '8px 16px'}}
-                >
-                    Dekripsi
-                </button>
-                <button
-                    onClick={randomizeKey}
-                    style={{marginRight: '10px', padding: '8px 16px'}}
-                >
-                    Randomize Key
-                </button>
-                <button
-                    onClick={analyzeAllPatterns}
-                    style={{padding: '8px 16px'}}
-                >
-                    Analisis Semua Pola
-                </button>
-            </div>
-            <p>Kunci saat ini: {key.join(', ')}</p>
 
-            {/* Hasil Analisis Pola */}
+            <div className="button-group">
+                <button className="button" onClick={encrypt}>Enkripsi</button>
+                <button className="button" onClick={handleDecrypt}>Dekripsi</button>
+                <button className="button" onClick={randomizeKey}>Randomize Key</button>
+                <button className="button" onClick={analyzeAllPatterns}>Analisis Semua Pola</button>
+            </div>
+
+            <div>
+                <h3>Hasil Enkripsi:</h3>
+                <div className="result-box">{encryptedMessage || '-'}</div>
+            </div>
+
+            <div>
+                <h3>Hasil Dekripsi:</h3>
+                <div className="result-box">{decryptedMessage || '-'}</div>
+            </div>
+
             {allPossibleDecryptions.length > 0 && (
-                <div style={{ marginTop: '20px' }}>
+                <div>
                     <h3>Hasil Analisis Semua Pola:</h3>
-                    <div style={{ maxHeight: '300px', overflowY: 'auto', border: '1px solid #ccc', padding: '10px' }}>
-                        {allPossibleDecryptions.map((result, index) => (
-                            <div key={index} style={{
-                                marginBottom: '10px',
-                                padding: '8px',
-                                backgroundColor: index === 0 ? '#e6f3ff' : 'transparent',
-                                border: '1px solid #ddd',
-                                borderRadius: '4px'
-                            }}>
-                                <strong>Kunci: [{result.key.join(', ')}]</strong>
-                                <div style={{ marginTop: '5px', wordBreak: 'break-all' }}>
-                                    {result.decrypted}
-                                </div>
-                            </div>
-                        ))}
+                    <div className="analysis-table-container">
+                        <table className="analysis-table">
+                            <thead>
+                                <tr>
+                                    <th>No.</th>
+                                    <th>Kunci</th>
+                                    <th>Hasil Dekripsi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {allPossibleDecryptions.map((result, index) => (
+                                    <tr key={index} className={index === 0 ? 'selected-row' : ''}>
+                                        <td>{index + 1}</td>
+                                        <td>{result.key.join(' - ')}</td>
+                                        <td>{result.decrypted}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             )}
 
-            {/* Statistik Karakter Input */}
-            <div style={{
-                marginTop: '20px',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center'
-            }}>
-                <h3>Statistik Karakter Input</h3>
-                <div style={{ width: '100%', maxWidth: '600px', height: '300px' }}>
-                    {Object.keys(charStats).length > 0 && (
-                        <Pie data={charStatsData} options={charStatsOptions} />
-                    )}
-                </div>
-                <div style={{ marginTop: '10px', textAlign: 'center' }}>
-                    <p>Total karakter: {message.replace(/\s/g, '').length}</p>
-                </div>
+            <div className="dropdown-section">
+                <button className="dropdown-button" onClick={() => setShowStat(!showStat)}>
+                    {showStat ? '▼' : '▶'} Statistik Karakter
+                </button>
+                {showStat && (
+                    <div className="stat-wrapper">
+                        <div className="chart-container">
+                            <h3>Statistik Karakter</h3>
+                            {Object.keys(charStats).length > 0 && (
+                                <div className="pie-chart">
+                                    <Pie data={charStatsData} options={charStatsOptions} />
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
             </div>
 
-            <div style={{ marginTop: '20px' }}>
-                <h3>Pesan Terenkripsi:</h3>
-                <div style={{
-                    padding: '10px',
-                    border: '1px solid #ccc',
-                    borderRadius: '4px',
-                    backgroundColor: '#f9f9f9',
-                    wordBreak: 'break-all'
-                }}>
-                    {encryptedMessage || '-'}
-                </div>
+            <div className="dropdown-section">
+                <button className="dropdown-button" onClick={() => setShowMatrices(!showMatrices)}>
+                    {showMatrices ? '▼' : '▶'} Matriks Kolom
+                </button>
+                {showMatrices && (
+                    <div className="matrices-wrapper">
+                        <div className="matrix-container">
+                            <h3>Matriks Plaintext</h3>
+                            {displayMatrixWithColumnNumbers(plaintextMatrix, false)}
+                            <div className="matrix-grid">
+                                {plaintextMatrix.map((row, rowIndex) => (
+                                    <div key={rowIndex} className="matrix-row">
+                                        {row.map((cell, colIndex) => (
+                                            <div 
+                                                key={colIndex} 
+                                                className="matrix-cell"
+                                                style={{ backgroundColor: cell ? '#e6f3ff' : '#ffffff' }}
+                                            >
+                                                {cell || '-'}
+                                            </div>
+                                        ))}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="matrix-container">
+                            <h3>Matriks Ciphertext</h3>
+                            {displayMatrixWithColumnNumbers(ciphertextMatrix, true)}
+                            <div className="matrix-grid">
+                                {ciphertextMatrix.map((row, rowIndex) => (
+                                    <div key={rowIndex} className="matrix-row">
+                                        {row.map((cell, colIndex) => (
+                                            <div 
+                                                key={colIndex} 
+                                                className="matrix-cell"
+                                                style={{ backgroundColor: cell ? '#e6f3ff' : '#ffffff' }}
+                                            >
+                                                {cell || '-'}
+                                            </div>
+                                        ))}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
 
-            <div style={{ marginTop: '20px' }}>
-                <h3>Pesan Terdekripsi:</h3>
-                <div style={{
-                    padding: '10px',
-                    border: '1px solid #ccc',
-                    borderRadius: '4px',
-                    backgroundColor: '#f9f9f9',
-                    wordBreak: 'break-all'
-                }}>
-                    {decryptedMessage || '-'}
-                </div>
-            </div>
-
-            <div style={{ marginTop: '20px' }}>
-                <h3>Matriks Plaintext</h3>
-                {displayMatrixWithColumnNumbers(plaintextMatrix, false)}
-            </div>
-
-            <div style={{ marginTop: '20px' }}>
-                <h3>Matriks Ciphertext</h3>
-                {displayMatrixWithColumnNumbers(ciphertextMatrix, true)}
-            </div>
-
-            <div style={{ width: '100%', maxWidth: '600px', height: '300px', marginTop: '20px' }}>
-                <h3>Pola Transposisi Kolom</h3>
-                <Bar data={plotData} options={{ responsive: true, maintainAspectRatio: false }} />
+            <div className="dropdown-section">
+                <button className="dropdown-button" onClick={() => setShowColumnPattern(!showColumnPattern)}>
+                    {showColumnPattern ? '▼' : '▶'} Pola Transposisi Kolom
+                </button>
+                {showColumnPattern && (
+                    <div className="chart-container">
+                        <Bar 
+                            data={plotData} 
+                            options={{ 
+                                responsive: true, 
+                                maintainAspectRatio: true, 
+                                scales: {
+                                    x: {
+                                        ticks: { color: '#ffffff' },
+                                        grid: { color: '#ffffff' }
+                                    },
+                                    y: {
+                                        ticks: { color: '#ffffff' },
+                                        grid: { color: '#ffffff0' }
+                                    }
+                                },
+                                plugins: {
+                                    legend: {
+                                        labels: { color: '#ffffff' }
+                                    }
+                                } 
+                            }} 
+                        />
+                    </div>
+                )}
             </div>
         </div>
     );

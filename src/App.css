@@ -1,3 +1,306 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+body {
+    background-color: #323232;
+    color: #ffffff;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.header {
+    color: #ffffff;
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.textarea {
+    width: 100%;
+    max-width: 600px;
+    padding: 12px;
+    border: 2px solid #404040;
+    border-radius: 8px;
+    font-size: 16px;
+    margin: 0 auto 20px;
+    display: block;
+    background-color: #2d2d2d;
+    color: #ffffff;
+}
+
+.textarea:focus {
+    outline: none;
+    border-color: #3498db;
+}
+
+.button-group {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin: 20px 0;
+}
+
+.button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    background-color: #3498db;
+    color: white;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.2s;
+}
+
+.button:hover {
+    background-color: #2980b9;
+}
+
+.result-box {
+    padding: 15px;
+    border: 1px solid #404040;
+    border-radius: 8px;
+    background-color: #2d2d2d;
+    margin: 15px 0;
+    word-break: break-all;
+}
+
+.result-box1 {
+    display: flex;
+    justify-content: center;
+    padding: 3px;
+    border-radius: 8px;
+    margin: 10px 0;
+    word-break: break-all;
+    font: 18px Times;
+    text-align: center;
+    font-weight: bold;
+    color: #ffffff;
+}
+
+.matrices-wrapper {
+    display: flex;
+    gap: 40px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin: 30px 0;
+}
+
+.matrix-container {
+    flex: 0 1 auto;
+    min-width: 250px;
+    margin: 0;
+}
+
+.matrix-grid {
+    display: inline-block;
+    border: 1px solid #404040;
+    padding: 10px;
+    background-color: #2d2d2d;
+    
+    color: #333333;
+}
+
+.matrix-row {
+    display: flex;
+}
+
+.matrix-cell {
+    width: 40px;
+    height: 40px;
+    border: 1px solid #404040;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #2d2d2d;
+}
+
+.matrix-cell[style*="background-color: #e6f3ff"] {
+    background-color: #1e3a5f !important;
+}
+
+.statistics-container {
+    display: flex;
+    gap: 40px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin: 30px 0;
+}
+
+.statistics-box {
+    flex: 1;
+    min-width: 250px;
+    max-width: 400px;
+    border: 1px solid #404040;
+    border-radius: 8px;
+    padding: 20px;
+    background-color: #2d2d2d;
+    color: #ddd;
+    
+}
+
+.statistics-box h3 {
+    margin: 0 0 15px 0;
+    color: #ffffff;
+    text-align: center;
+}
+
+.statistics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+    gap: 10px;
+    color: #ddd;
+}
+
+.stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 8px;
+    border: 1px solid #404040;
+    border-radius: 4px;
+    background-color: #2d2d2d;
+    color: #ddd;
+}
+
+.stat-char {
+    font-size: 16px;
+    font-weight: bold;
+    color: #ffffff;
+}
+
+.stat-count {
+    font-size: 14px;
+    color: #d0cdcd;
+    margin-top: 4px;
+}
+
+.chart-container {
+    margin: 20px 0;
+    padding: 20px;
+    border: 1px solid #404040;
+    border-radius: 8px;
+    background-color: rgb(45, 45, 45);
+}
+
+.chart-container h3 {
+    text-align: center;
+    color: #ffffff;
+}
+
+.pie-chart {
+    width: 100%;
+    max-width: 400px;
+    height: 400px;
+    margin: 0 auto;
+    color: #ffffff;
+}
+
+.analysis-table-container {
+    margin: 20px 0;
+    overflow-x: auto;
+}
+
+.analysis-table {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: #2d2d2d;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.analysis-table th,
+.analysis-table td {
+    padding: 12px 15px;
+    text-align: left;
+    border: 1px solid #404040;
+}
+
+.analysis-table th {
+    background-color: #363636;
+    font-weight: bold;
+}
+
+.analysis-table tbody tr:nth-child(even) {
+    background-color: #333333;
+}
+
+.analysis-table tbody tr:hover {
+    background-color: #404040;
+}
+
+.analysis-table .selected-row {
+    background-color: #1e3a5f;
+}
+
+.analysis-table .selected-row:hover {
+    background-color: #264773;
+}
+
+@media (max-width: 768px) {
+    .matrices-wrapper,
+    .statistics-container {
+        flex-direction: column;
+        align-items: center;
+        gap: 20px;
+    }
+    
+    .matrix-container,
+    .statistics-box {
+        width: 100%;
+    }
+    
+    .statistics-grid {
+        grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
+    }
+}
+
+.dropdown-section {
+    margin: 20px 0;
+}
+
+.dropdown-button {
+    width: 100%;
+    padding: 1rem;
+    background-color: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    color: var(--text-color);
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+  }
+  
+  .dropdown-button:hover {
+    background-color: var(--hover-color);
+    text-decoration: underline;
+  }
+
+.dropdown-content {
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-top: none;
+    border-radius: 0 0 5px 5px;
+}
+
+/* Animation for dropdown */
+.matrices-wrapper,
+.pattern-visualization,
+.chart-container {
+    animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
