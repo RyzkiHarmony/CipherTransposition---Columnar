@@ -7,7 +7,9 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend,
 
 const App = () => {
     const [message, setMessage] = useState('');
-    const [key, setKey] = useState([1, 2, 3, 5, 4]);
+    const [decryptMessage, setDecryptMessage] = useState('');
+    const [key, setKey] = useState([1,2,3,4,5]);
+    const [keyInput, setKeyInput] = useState('1,2,3,4,5');
     const [encryptedMessage, setEncryptedMessage] = useState('');
     const [decryptedMessage, setDecryptedMessage] = useState('');
     const [patternData, setPatternData] = useState([]);
@@ -66,28 +68,28 @@ const App = () => {
     };
 
     const decrypt = (customKey = key) => {
-        if (!encryptedMessage) return '';
-    
+        if (!decryptMessage) return ''; // Changed from encryptedMessage to decryptMessage
+
         const numCols = customKey.length;
-        const numRows = Math.ceil(encryptedMessage.length / numCols);
+        const numRows = Math.ceil(decryptMessage.length / numCols); // Changed from encryptedMessage
         const columnOrder = getColumnOrder(customKey);
-    
+
         let decryptGrid = Array.from({ length: numRows }, () => Array(numCols).fill(''));
-        const fullRows = Math.floor(encryptedMessage.length / numCols);
-        const remainingChars = encryptedMessage.length % numCols;   
-    
+        const fullRows = Math.floor(decryptMessage.length / numCols); // Changed from encryptedMessage
+        const remainingChars = decryptMessage.length % numCols; // Changed from encryptedMessage
+
         let pos = 0;
         for (let i = 0; i < numCols; i++) {
             const colLength = fullRows + (columnOrder[i] < remainingChars ? 1 : 0);
             const targetCol = columnOrder[i];
-    
+
             for (let row = 0; row < colLength; row++) {
-                if (pos < encryptedMessage.length) {
-                    decryptGrid[row][targetCol] = encryptedMessage[pos++];
+                if (pos < decryptMessage.length) { // Changed from encryptedMessage
+                    decryptGrid[row][targetCol] = decryptMessage[pos++]; // Changed from encryptedMessage
                 }
             }
         }
-    
+
         let decrypted = '';
         for (let row = 0; row < numRows; row++) {
             for (let col = 0; col < numCols; col++) {
@@ -96,7 +98,7 @@ const App = () => {
                 }
             }
         }
-    
+
         return decrypted;
     };
 
@@ -149,19 +151,53 @@ const App = () => {
         setCiphertextMatrix([]);
     };
 
+    const handleKeyChange = (e) => {
+        const input = e.target.value;
+        setKeyInput(input);
+        
+        // Convert input string to array of numbers
+        const newKey = input.split(',')
+            .map(num => parseInt(num.trim()))
+            .filter(num => !isNaN(num));
+
+        // Only update key if we have valid numbers
+        if (newKey.length > 0) {
+            setKey(newKey);
+        }
+    };
+
     const handleDecrypt = () => {
         const result = decrypt();
         setDecryptedMessage(result);
     };
 
     const analyzeAllPatterns = () => {
-        const baseKey = Array.from({ length: key.length }, (_, i) => i + 1);
-        const allPermutations = generatePermutations(baseKey);
-        const results = allPermutations.map(permutation => ({
-            key: permutation,
-            decrypted: decrypt(permutation)
-        }));
-        const sortedResults = results.sort((a, b) => b.decrypted.length - a.decrypted.length);
+        const results = [];
+        
+        // Generate combinations for different key lengths (2 to 5)
+        for(let length = 2; length <= 5; length++) {
+            const baseKey = Array.from({ length: length }, (_, i) => i + 1);
+            const permutations = generatePermutations(baseKey);
+            
+            // For each permutation, try decryption
+            permutations.forEach(permutation => {
+                const decrypted = decrypt(permutation);
+                results.push({
+                    key: permutation,
+                    keyLength: permutation.length,
+                    decrypted: decrypted
+                });
+            });
+        }
+    
+        // Sort results by decrypted message length and key length
+        const sortedResults = results.sort((a, b) => {
+            if (b.decrypted.length === a.decrypted.length) {
+                return a.keyLength - b.keyLength; // Prefer shorter keys when decrypted lengths are equal
+            }
+            return b.decrypted.length - a.decrypted.length;
+        });
+    
         setAllPossibleDecryptions(sortedResults);
     };
 
@@ -242,11 +278,29 @@ const App = () => {
             <textarea
                 className="textarea"
                 rows="4"
-                placeholder="Masukkan Plaintext"
+                placeholder="Masukkan Plaintext untuk Enkripsi"
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
             />
+
+            <textarea
+                className="textarea"
+                rows="4"
+                placeholder="Masukkan Text untuk Dekripsi"
+                value={decryptMessage}
+                onChange={(e) => setDecryptMessage(e.target.value)}
+            />
             
+            <div className="key-input-container">
+                <input
+                    type="text"
+                    className="key-input"
+                    placeholder="Masukkan key (pisahkan dengan koma)"
+                    value={keyInput}
+                    onChange={handleKeyChange}
+                />
+            </div>
+
             <div className="result-box1">
                 Key: <br />
                 {key.join(' - ')}
@@ -277,6 +331,7 @@ const App = () => {
                             <thead>
                                 <tr>
                                     <th>No.</th>
+                                    <th>Panjang Key</th>
                                     <th>Kunci</th>
                                     <th>Hasil Dekripsi</th>
                                 </tr>
@@ -285,6 +340,7 @@ const App = () => {
                                 {allPossibleDecryptions.map((result, index) => (
                                     <tr key={index} className={index === 0 ? 'selected-row' : ''}>
                                         <td>{index + 1}</td>
+                                        <td>{result.keyLength}</td>
                                         <td>{result.key.join(' - ')}</td>
                                         <td>{result.decrypted}</td>
                                     </tr>
@@ -293,7 +349,7 @@ const App = () => {
                         </table>
                     </div>
                 </div>
-            )}
+            )}  
 
             <div className="dropdown-section">
                 <button className="dropdown-button" onClick={() => setShowStat(!showStat)}>
